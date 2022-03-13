@@ -1,38 +1,77 @@
-import { useEffect, useRef, useState } from 'react'
-import CanvasDraw from 'react-canvas-draw'
+import { useEffect, useState } from 'react'
+import io from 'socket.io-client'
+import Drawing from './components/Drawing'
+import Lobby from './components/Lobby'
+import StartScreen from './components/StartScreen'
+import SubmitWaiting from './components/SubmitWaiting'
 import './App.css';
 
 function App() {
-  let canvasRef = useRef()
-  const [save, setSave] = useState()
+  const [socket, setSocket] = useState(null)
+  const [roomCode, setRoomCode] = useState('')
+  const [nickname, setNickname] = useState('')
+  const [players, setPlayers] = useState([])
 
+  // Game state
+  const [state, setState] = useState('startScreen')
+
+  // Initialize socket and event listeners
   useEffect(() => {
-    console.log(save)
-  }, [save])
+    const newSocket = io(`http://${window.location.hostname}:3000`)
+    newSocket.on('newPlayer', (players) => {
+      setPlayers(players)
+    })
+    newSocket.on('started', () => {
+      setState('drawing')
+    })
+    setSocket(newSocket);
+    return () => newSocket.close();
+  }, [setSocket]);
+
+  // Start/join game
+  const startGame = () => {
+    socket.emit('startGame', { roomCode, nickname })
+    setState('lobby')
+  }
+
+  // Start game from lobby
+  const start = () => {
+    socket.emit('start', { roomCode })
+  }
+
+  if (state === 'startScreen') {
+    return (
+      <StartScreen
+        roomCode={roomCode}
+        setRoomCode={setRoomCode}
+        nickname={nickname}
+        setNickname={setNickname}
+        startGame={startGame}
+      />
+    )
+  }
+
+  if (state === 'lobby') {
+    return (
+      <Lobby
+        players={players}
+        start={start}
+      />
+    )
+  }
+
+  if (state === 'drawing') {
+    return <Drawing setState={setState} />
+  }
+
+  if (state === 'submitWaiting') {
+    return <SubmitWaiting />
+  }
 
   return (
     <div className="App">
       <header className="App-header">
-        <button onClick={() => canvasRef.eraseAll()}>
-          Erase
-        </button>
-        <button onClick={() => canvasRef.undo()}>
-          Undo
-        </button>
-        <button onClick={() => setSave(canvasRef.getSaveData())}>
-          Save
-        </button>
-        <button onClick={() => canvasRef.loadSaveData(save)}>
-          Load
-        </button>
-        <CanvasDraw
-          ref={canvasDraw => (canvasRef = canvasDraw)}
-          canvasWidth={400}
-          canvasHeight={600}
-          lazyRadius={0}
-          brushRadius={4}
-          hideGrid
-        />
+        <p>uh oh</p>
       </header>
     </div>
   );
